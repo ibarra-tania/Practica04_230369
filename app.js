@@ -83,7 +83,7 @@ app.post('/logout', (req, res)=>{
         return res.status(404).json({message: "No se ha encontrado una sesión activa"});
     }
 
-    delete session[sessionId];
+    delete sessions[sessionId];
     req.session.destroy((err)=>{
         if(err){
             return res.status(500).send('Error al cerrar sesión')
