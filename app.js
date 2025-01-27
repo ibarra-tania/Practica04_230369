@@ -140,7 +140,7 @@ app.get('/sessionAll', (req, res) => {
         formattedSessions[sessionID] = {
             ...session,
             createdAt: moment(session.createdAt).tz('America/Mexico_City').format('YYYY/MM/DD HH:mm:ss'),
-            lastAccessed: moment(session.lastAccessed).tz('America/Mexico_City').format('YYYY/MM/DD HH:mm:ss')
+            lastAccesed: moment(session.lastAccesed).tz('America/Mexico_City').format('YYYY/MM/DD HH:mm:ss')
         };
     }
 
@@ -154,7 +154,7 @@ setInterval(() => {
     const now = moment();
     for (const sessionID in sessions) {
         const session = sessions[sessionID];
-        const idleTime = now.diff(moment(session.lastAccessed, 'YYYY/MM/DD HH:mm:ss'), 'seconds');
+        const idleTime = now.diff(moment(session.lastAccesed, 'YYYY/MM/DD HH:mm:ss'), 'seconds');
         if (idleTime > 120) { // 2 minutos
             delete sessions[sessionID];
         }
