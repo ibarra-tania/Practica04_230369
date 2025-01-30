@@ -28,6 +28,11 @@ app.use(
     })
 )
 
+const filterSession = (session) => {
+    const { cookie, ...filteredSession } = session;
+    return filteredSession;
+};
+
 //Bienvenida al entrar al servidor
 app.get('/', (req, res) =>{
     return res.status(200).json({message: "Bienvenida al API de Control de Sesiones",
@@ -104,28 +109,35 @@ app.post('/update', (req, res)=>{
     sessions[req.session.sessionId]= req.session;
 
     res.status(200).json({
-        message: 'Datos actualizados', session: req.session
+        message: 'Datos actualizados', session: filterSession(req.session)
     })
 
 })
 
-app.get('/status', (req, res)=>{
+app.get("/status",(req,res)=>{
+    const sessionId =req.body;
     if(!req.session.sessionId || !sessions[req.session.sessionId]){
-        return res.status(404).json({message: "No hay sesiones activa"})
+        return res.status(404).json({
+            message:"No existe una sesion activa"
+        });
     }
-
-    const session= sessions[req.session.sessionId];
+    
+    
+    const session = sessions[sessionId];
     const now= moment();
     const time=now.diff(moment(session.lastAccesed, 'YYYY/MM/DD HH:mm:ss'), 'seconds');
     const duration= now.diff(moment(session.createdAt, 'YYYY/MM/DD HH:mm:ss'), 'seconds');
 
     res.status(200).json({
         message: "Sesión Activa",
-        session, 
+        session: {
+            ...filterSession(session),
+            clientIp: req.ip
+        },
         time: `${time} segundos`,
         duration: `${duration} segundos`
-    })
-})
+    });
+});
 
 app.get('/sessionAll', (req, res) => {
     if (Object.keys(sessions).length === 0) {
@@ -138,7 +150,8 @@ app.get('/sessionAll', (req, res) => {
     for (const sessionID in sessions) {
         const session = sessions[sessionID];
         formattedSessions[sessionID] = {
-            ...session,
+            ...filterSession(session),
+            clientIp: req.ip,
             createdAt: moment(session.createdAt).tz('America/Mexico_City').format('YYYY/MM/DD HH:mm:ss'),
             lastAccesed: moment(session.lastAccesed).tz('America/Mexico_City').format('YYYY/MM/DD HH:mm:ss')
         };
