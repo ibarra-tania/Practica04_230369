@@ -114,7 +114,7 @@ app.post('/update', (req, res)=>{
 
 })
 
-app.get("/status",(req,res)=>{
+app.post("/status",(req,res)=>{
     const sessionId =req.body;
     if(!req.session.sessionId || !sessions[req.session.sessionId]){
         return res.status(404).json({
