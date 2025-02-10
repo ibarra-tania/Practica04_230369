@@ -9,6 +9,7 @@ const sessionSchema = new mongoose.Schema({
     lastAccesed: { type: String, required: true },
     serverIp: { type: String, required: true },
     serverMac: { type: String, required: true },
+    clientIp: { type: String, required: true },
     status: { type: String, enum: ["Activa", "Inactiva", "Finalizada por el Usuario", "Finalizada por Falla de Sistema"], default: "Activa"}
 }, {versionKey: false});
 

@@ -13,10 +13,13 @@ const app= express();
 const PORT = 3500;
 
 mongoose.connect('mongodb+srv://tass:TantanC14AI@clustertania.6aqxg.mongodb.net/sessions_control_db?retryWrites=true&w=majority&appName=ClusterTania')
-.then((db)=> console.log("Mongo connect"))
-.catch((error)=> console.log(error))
+  .then((db) => console.log("Mongo connect"))
+  .catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+    process.exit(1); // Detener la ejecución si no hay conexión a la base de datos
+  });
 
-const keypair = forge.pki.rsa.generateKeyPair(600);
+const keypair = forge.pki.rsa.generateKeyPair(2048);
 const publicKey = forge.pki.publicKeyToPem(keypair.publicKey);
 const privateKey = forge.pki.privateKeyToPem(keypair.privateKey);
 
@@ -71,6 +74,11 @@ const getMac= () =>{
     })
 }
 
+const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0] : req.connection.remoteAddress;
+  return ip;
+};
 
 const encryptData = (data) => {
     const encrypted = keypair.publicKey.encrypt(data, 'RSA-OAEP');
@@ -79,19 +87,19 @@ const encryptData = (data) => {
   
 //Endpoint de logueo
 app.post('/login', async (req, res) => {
+  try {
     const { email, nickname, macAddress } = req.body;
     if (!email || !nickname || !macAddress) {
-      return res.status(400).json({
-        message: 'Se esperan campos requeridos'
-      });
+      return res.status(400).json({ message: 'Se esperan campos requeridos' });
     }
-  
+
     const sessionId = uuidv4();
     const createdAt_CDMX = moment().tz('America/Mexico_City').toISOString();
     const serverIp = encryptData(getLocal() || '');
     const serverMac = encryptData(await getMac());
     const encryptedMacAddress = encryptData(macAddress);
-  
+    const clientIp = encryptData(getClientIp(req));
+
     const sessionData = new Session({
       sessionId,
       email,
@@ -101,44 +109,48 @@ app.post('/login', async (req, res) => {
       lastAccesed: createdAt_CDMX,
       serverIp,
       serverMac,
+      clientIp,
       status: "Activa"
     });
-  
+
     await sessionData.save();
     req.session.sessionId = sessionId;
-  
-    res.status(200).json({
-      message: 'Se ha logueado de manera exitosa',
-      sessionId
-    });
-  });
 
-app.post('/update', async(req, res)=>{
-    const {email, nickname} = req.body;
+    res.status(200).json({ message: 'Se ha logueado de manera exitosa', sessionId });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
 
-    if(!req.session.sessionId){
-        return res.status(400).json({message: "No existe una sesión activa"})
+app.post('/update', async (req, res) => {
+  try {
+    const { email, nickname } = req.body;
+
+    if (!req.session.sessionId) {
+      return res.status(400).json({ message: "No existe una sesión activa" });
     }
 
-        const session = await  Session.findOne({sessionId: req.session.sessionId});
+    const session = await Session.findOne({ sessionId: req.session.sessionId });
 
-        if(!session){
-            return res.status(404).json({message: "Sesión no encontrada"})
-        }
+    if (!session) {
+      return res.status(404).json({ message: "Sesión no encontrada" });
+    }
 
-        if(email) session.email= email;
-        if(nickname) session.nickname = nickname;
-        session.lastAccesed= moment().tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss')
+    if (email) session.email = email;
+    if (nickname) session.nickname = nickname;
+    session.lastAccesed = moment().tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss');
 
-        await session.save();
-        res.status(200).json({
-            message: 'Datos actualizados', session: filterSession(session)
-        })
-    
-})
+    await session.save();
+    res.status(200).json({ message: 'Actualización correcta', session });
+  } catch (error) {
+    console.error("Error during update:", error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
 
 app.post("/status", async(req,res)=>{
- const { sessionId } = req.session;
+ const { sessionId } = req.body;
 
   if (!sessionId) {
     return res.status(404).json({
@@ -209,7 +221,7 @@ app.post('/logout', async(req, res)=>{
     });
 });
 
-app.get('/currentSessions', async (req, res) => {// sesiones actuales
+app.get('/activeSessions', async (req, res) => {// sesiones actuales
     try {
       const activeSessions = await Session.find({ status: "Activa" });
   
