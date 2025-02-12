@@ -94,7 +94,7 @@ app.post('/login', async (req, res) => {
     }
 
     const sessionId = uuidv4();
-    const createdAt_CDMX = moment().tz('America/Mexico_City').toISOString();
+    const createdAt_CDMX = moment().tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss');
     const serverIp = encryptData(getLocal() || '');
     const serverMac = encryptData(await getMac());
     const encryptedMacAddress = encryptData(macAddress);
@@ -124,7 +124,7 @@ app.post('/login', async (req, res) => {
 });
 
 app.post('/update', async (req, res) => {
-  try {
+  
     const { email, nickname } = req.body;
 
     if (!req.session.sessionId) {
@@ -143,10 +143,6 @@ app.post('/update', async (req, res) => {
 
     await session.save();
     res.status(200).json({ message: 'Actualización correcta', session });
-  } catch (error) {
-    console.error("Error during update:", error);
-    res.status(500).json({ message: 'Error interno del servidor' });
-  }
 });
 
 app.post("/status", async(req,res)=>{
@@ -163,9 +159,9 @@ app.post("/status", async(req,res)=>{
     return res.status(404).json({ message: 'Sesión no encontrada' });
   }
 
-  const now = moment();
-  const inactividad = now.diff(moment(session.lastAccesed), 'minutes');
-  const duracion = now.diff(moment(session.createdAt), 'minutes');
+  const now = moment().tz('America/Mexico_City');
+  const inactividad = now.diff(moment(session.lastAccesed).tz('America/Mexico_City'), 'minutes');
+  const duracion = now.diff(moment(session.createdAt).tz('America/Mexico_City'), 'minutes');
 
   res.status(200).json({
     message: 'Sesión activa',
@@ -186,13 +182,13 @@ app.get('/sessionAll', async(req, res) => {
     }
 
         // Formatear las sesiones para la respuesta
-        const now = moment();
+        const now = moment().tz('America/Mexico_City');
         const formattedSessions = sessions.map(session => {
-            const inactividad = now.diff(moment(session.lastAccesed), 'minutes');
+            const inactividad = now.diff(moment(session.lastAccesed).tz('America/Mexico_City'), 'minutes');
             return {
               ...session._doc,
-              createdAt: moment(session.createdAt).tz('America/Mexico_City').toISOString(),
-              lastAccesed: moment(session.lastAccesed).tz('America/Mexico_City').toISOString(),
+              createdAt: moment(session.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss'),
+              lastAccessed: moment(session.lastAccessed).tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss'),
               inactividad: `${inactividad} minutos`
             };
           });
@@ -221,7 +217,7 @@ app.post('/logout', async(req, res)=>{
     });
 });
 
-app.get('/activeSessions', async (req, res) => {// sesiones actuales
+app.get('/currentSession', async (req, res) => {// sesiones actuales
     try {
       const activeSessions = await Session.find({ status: "Activa" });
   
@@ -231,8 +227,8 @@ app.get('/activeSessions', async (req, res) => {// sesiones actuales
   
       const formattedSessions = activeSessions.map(session => ({
         ...session._doc,
-        createdAt: moment(session.createdAt).tz('America/Mexico_City').toISOString(),
-        lastAccesed: moment(session.lastAccesed).tz('America/Mexico_City').toISOString(),
+        createdAt: moment(session.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss'),
+        lastAccessed: moment(session.lastAccessed).tz('America/Mexico_City').format('YYYY-MM-DD HH:mm:ss'),
       }));
   
       res.status(200).json({ message: 'Sesiones activas', sessions: formattedSessions });
